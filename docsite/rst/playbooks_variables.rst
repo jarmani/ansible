@@ -5,19 +5,17 @@ Variables
 
 While automation exists to make it easier to make things repeatable, all of your systems are likely not exactly alike.
 
-All of your systems are likely not the same.  On some systems you may want to set some behavior
-or configuration that is slightly different from others. 
+On some systems you may want to set some behavior or configuration that is slightly different from others. 
 
 Also, some of the observed behavior or state 
 of remote systems might need to influence how you configure those systems.  (Such as you might need to find out the IP
 address of a system and even use it as a configuration value on another system).
 
-You might have some templates for configuration files that are mostly the same, but slightly different
-based on those variables.  
+You might have some templates for configuration files that are mostly the same, but slightly different based on those variables.  
 
 Variables in Ansible are how we deal with differences between systems.  
 
-Once understanding variables you'll also want to dig into :doc:`playbooks_conditionals` and :doc:`playbooks_loops`.
+To understand variables you'll also want to dig into :doc:`playbooks_conditionals` and :doc:`playbooks_loops`.
 Useful things like the "group_by" module
 and the "when" conditional can also be used with variables, and to help manage differences between systems.
 
@@ -179,6 +177,27 @@ Jinja2 provides a useful 'default' filter, that is often a better approach to fa
 
 In the above example, if the variable 'some_variable' is not defined, the value used will be 5, rather than an error
 being raised.
+
+
+.. _omitting_undefined_variables:
+
+Omitting Undefined Variables and Parameters
+-------------------------------------------
+
+As of Ansible 1.8, it is possible to use the default filter to omit variables and module parameters using the special
+`omit` variable::
+
+    - name: touch files with an optional mode
+      file: dest={{item.path}} state=touch mode={{item.mode|default(omit)}}
+      with_items:
+        - path: /tmp/foo
+        - path: /tmp/bar
+        - path: /tmp/baz
+          mode: "0444"
+
+For the first two files in the list, the default mode will be determined by the umask of the system as the `mode=`
+parameter will not be sent to the file module while the final file will receive the `mode=0444` option.
+
 
 .. _list_filters:
 
