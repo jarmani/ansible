@@ -317,6 +317,10 @@ To get the directory from a path::
 To expand a path containing a tilde (`~`) character (new in version 1.5)::
 
     {{ path | expanduser }}
+    
+To get the real path of a link (new in version 1.8)::
+
+   {{ path | readlink }}
 
 To work with Base64 encoded strings::
 
@@ -667,7 +671,7 @@ For instance, what if you want users to be able to control some aspect about how
 .. note:: Perhaps "local facts" is a bit of a misnomer, it means "locally supplied user values" as opposed to "centrally supplied user values", or what facts are -- "locally dynamically determined values".
 
 If a remotely managed system has an "/etc/ansible/facts.d" directory, any files in this directory
-ending in ".fact", can be JSON, INI, or executable files returning JSON, and these can supply local facts in Ansible.
+ending in ".fact", can be YAML, JSON, INI, or executable files returning JSON, and these can supply local facts in Ansible.
 
 For instance assume a /etc/ansible/facts.d/preferences.fact::
 

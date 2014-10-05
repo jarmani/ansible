@@ -287,7 +287,8 @@ class Play(object):
                         if os.path.isfile(vars):
                             vars_data = utils.parse_yaml_from_file(vars, vault_password=self.vault_password)
                             if vars_data:
-                                dep_vars = utils.combine_vars(vars_data, dep_vars)
+                                #dep_vars = utils.combine_vars(vars_data, dep_vars)
+                                dep_vars = utils.combine_vars(dep_vars, vars_data)
                         defaults = self._resolve_main(utils.path_dwim(self.basedir, os.path.join(dep_path, 'defaults')))
                         dep_defaults_data = {}
                         if os.path.isfile(defaults):
@@ -372,7 +373,7 @@ class Play(object):
         # flush handlers after pre_tasks
         new_tasks.append(dict(meta='flush_handlers'))
 
-        roles = self._build_role_dependencies(roles, [], self.vars)
+        roles = self._build_role_dependencies(roles, [], {})
 
         # give each role an uuid and
         # make role_path available as variable to the task
@@ -757,11 +758,6 @@ class Play(object):
 
     # *************************************************
 
-    def _has_vars_in(self, msg):
-        return "$" in msg or "{{" in msg
-
-    # *************************************************
-
     def _update_vars_files_for_host(self, host, vault_password=None):
 
         def generate_filenames(host, inject, filename):
@@ -782,7 +778,7 @@ class Play(object):
 
             # filename4 is the dwim'd path, but may also be mixed-scope, so we use
             # both play scoped vars and host scoped vars to template the filepath
-            if self._has_vars_in(filename3) and host is not None:
+            if utils.contains_vars(filename3) and host is not None:
                 inject.update(self.vars)
                 filename4 = template(self.basedir, filename3, inject)
                 filename4 = utils.path_dwim(self.basedir, filename4)
@@ -810,8 +806,8 @@ class Play(object):
                     raise errors.AnsibleError("%s must be stored as a dictionary/hash" % filename4)
                 if host is not None:
                     target_filename = None
-                    if self._has_vars_in(filename2):
-                        if not self._has_vars_in(filename3):
+                    if utils.contains_vars(filename2):
+                        if not utils.contains_vars(filename3):
                             target_filename = filename3
                         else:
                             target_filename = filename4
@@ -860,7 +856,7 @@ class Play(object):
             else:
                 # just one filename supplied, load it!
                 filename2, filename3, filename4 = generate_filenames(host, inject, filename)
-                if self._has_vars_in(filename4):
+                if utils.contains_vars(filename4):
                     continue
                 if process_files(filename, filename2, filename3, filename4, host=host):
                     processed.append(filename)

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import traceback
 import unittest
 import os
 import os.path
@@ -217,36 +218,23 @@ class TestUtils(unittest.TestCase):
         # leading junk
         self.assertEqual(ansible.utils.parse_json('ansible\n{"foo": "bar"}'), dict(foo="bar"))
 
-        # "baby" json
-        self.assertEqual(ansible.utils.parse_json('foo=bar baz=qux'), dict(foo='bar', baz='qux'))
-
         # No closing quotation
         try:
-            ansible.utils.parse_json('foo=bar "')
+            rc = ansible.utils.parse_json('foo=bar "')
+            print rc
         except ValueError:
             pass
         else:
+            traceback.print_exc()
             raise AssertionError('Incorrect exception, expected ValueError')
 
         # Failed to parse
         try:
             ansible.utils.parse_json('{')
-        except ansible.errors.AnsibleError:
+        except ValueError:
             pass
         else:
-            raise AssertionError('Incorrect exception, expected ansible.errors.AnsibleError')
-
-        # boolean changed/failed
-        self.assertEqual(ansible.utils.parse_json('changed=true'), dict(changed=True))
-        self.assertEqual(ansible.utils.parse_json('changed=false'), dict(changed=False))
-        self.assertEqual(ansible.utils.parse_json('failed=true'), dict(failed=True))
-        self.assertEqual(ansible.utils.parse_json('failed=false'), dict(failed=False))
-
-        # rc
-        self.assertEqual(ansible.utils.parse_json('rc=0'), dict(rc=0))
-
-        # Just a string
-        self.assertEqual(ansible.utils.parse_json('foo'), dict(failed=True, parsed=False, msg='foo'))
+            raise AssertionError('Incorrect exception, expected ValueError')
 
     def test_parse_yaml(self):
         #json
@@ -465,8 +453,6 @@ class TestUtils(unittest.TestCase):
                          '{"foo": "bar"}\n')
         self.assertEqual(ansible.utils.filter_leading_non_json_lines('a\nb\nansible!\n["foo", "bar"]'),
                          '["foo", "bar"]\n')
-        self.assertEqual(ansible.utils.filter_leading_non_json_lines('a\nb\nansible!\nfoo=bar'),
-                         'foo=bar\n')
 
     def test_boolean(self):
         self.assertEqual(ansible.utils.boolean("true"), True)
@@ -485,7 +471,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(ansible.utils.boolean("foo"), False)
 
     def test_make_sudo_cmd(self):
-        cmd = ansible.utils.make_sudo_cmd('root', '/bin/sh', '/bin/ls')
+        cmd = ansible.utils.make_sudo_cmd(C.DEFAULT_SUDO_EXE, 'root', '/bin/sh', '/bin/ls')
         self.assertTrue(isinstance(cmd, tuple))
         self.assertEqual(len(cmd), 3)
         self.assertTrue('-u root' in cmd[0])
@@ -517,6 +503,11 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(ansible.utils.is_list_of_strings(['foo', 'bar', u'baz']), True)
         self.assertEqual(ansible.utils.is_list_of_strings(['foo', 'bar', True]), False)
         self.assertEqual(ansible.utils.is_list_of_strings(['one', 2, 'three']), False)
+
+    def test_contains_vars(self):
+        self.assertTrue(ansible.utils.contains_vars('{{foo}}'))
+        self.assertTrue(ansible.utils.contains_vars('$foo'))
+        self.assertFalse(ansible.utils.contains_vars('foo'))
 
     def test_safe_eval(self):
         # Not basestring
@@ -696,21 +687,15 @@ class TestUtils(unittest.TestCase):
         )
 
         # invalid quote detection
-        try:
-            with self.assertRaises(Exception):
-                split_args('hey I started a quote"')
-            with self.assertRaises(Exception):
-                split_args('hey I started a\' quote')
-        except TypeError:
-            # you must be on Python 2.6 still, FIXME
-            pass
+        self.assertRaises(Exception, split_args, 'hey I started a quote"')
+        self.assertRaises(Exception, split_args, 'hey I started a\' quote')
 
         # jinja2 loop blocks with lots of complexity
         _test_combo(
             # in memory of neighbors cat
             # we preserve line breaks unless a line continuation character preceeds them
             'a {% if x %} y {%else %} {{meow}} {% endif %} "cookie\nchip" \\\ndone\nand done',
-            ['a', '{% if x %}', 'y', '{%else %}', '{{meow}}', '{% endif %}', '"cookie\nchip"', 'done', '\nand', 'done']
+            ['a', '{% if x %}', 'y', '{%else %}', '{{meow}}', '{% endif %}', '"cookie\nchip"', 'done\n', 'and', 'done']
         )
 
         # test space preservation within quotes

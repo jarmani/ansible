@@ -396,7 +396,10 @@ def fetch_url(module, url, data=None, headers=None, method=None,
         proxyhandler = urllib2.ProxyHandler({})
         handlers.append(proxyhandler)
 
-    handlers.append(CustomHTTPSHandler)
+    # pre-2.6 versions of python cannot use the custom https
+    # handler, since the socket class is lacking this method
+    if hasattr(socket, 'create_connection'):
+        handlers.append(CustomHTTPSHandler)
 
     opener = urllib2.build_opener(*handlers)
     urllib2.install_opener(opener)
@@ -442,6 +445,10 @@ def fetch_url(module, url, data=None, headers=None, method=None,
     except urllib2.URLError, e:
         code = int(getattr(e, 'code', -1))
         info.update(dict(msg="Request failed: %s" % str(e), status=code))
+    except socket.error, e:
+        info.update(dict(msg="Connection failure: %s" % str(e), status=-1))
+    except Exception, e:
+        info.update(dict(msg="An unknown error occurred: %s" % str(e), status=-1))
 
     return r, info
 

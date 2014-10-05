@@ -26,6 +26,7 @@ from ansible import utils
 from ansible import errors
 import sys
 
+
 class InventoryScript(object):
     ''' Host inventory parser for ansible using external inventory scripts. '''
 
@@ -53,6 +54,7 @@ class InventoryScript(object):
 
         # not passing from_remote because data from CMDB is trusted
         self.raw  = utils.parse_json(self.data)
+        self.raw  = utils.json_dict_unicode_to_bytes(self.raw)
 
         all       = Group('all')
         groups    = dict(all=all)
@@ -138,4 +140,10 @@ class InventoryScript(object):
         except OSError, e:
             raise errors.AnsibleError("problem running %s (%s)" % (' '.join(cmd), e))
         (out, err) = sp.communicate()
-        return utils.parse_json(out)
+        if out.strip() == '':
+            return dict()
+        try:
+            return utils.json_dict_unicode_to_bytes(utils.parse_json(out))
+        except ValueError:
+            raise errors.AnsibleError("could not parse post variable response: %s, %s" % (cmd, out))
+
